@@ -46,9 +46,17 @@ static int is_pipeline(Pgm* p);
 
 static void execute_command(Pgm *p);
 
+void sigint_handler(pid_t pid);
+
 
 int main(void)
 {
+   // Ignore the SIGINT, and it makes the lsh cannot be 
+  // affected by the Ctrl + C.
+
+ signal(SIGINT,SIG_IGN);
+ signal(SIGCHLD,sigint_handler);
+ 
     for (;;)
     {
         char* line;
@@ -165,8 +173,14 @@ static void run_cmds(Command* cmd_list)
             close(fd3);
         }
 
-        execute_command(cmd_list->pgm);
+     //Default signal handler
+       if (!cmd_list->background)
+        {
+            signal(SIGINT,SIG_DFL);
+        }
 
+        execute_command(cmd_list->pgm);
+        exit(EXIT_SUCCESS);
     }
     else //parent process
     {
@@ -179,6 +193,15 @@ static void run_cmds(Command* cmd_list)
         }
     }
 
+}
+
+/*
+* Define the signal SIG_INT processing fuction.
+* send the SIGCHLD signal to the parent process.
+*/
+void sigint_handler(pid_t pid)
+{
+  waitpid(-1,NULL,0);
 }
 
 static void execute_command(Pgm* current_pgm)
